@@ -27,8 +27,10 @@ contract NftFactory {
         string memory nftSymbol
     ) external returns (address) {
         if (msg.sender == address(0)) revert NftFactory__ZeroAddressCreator();
-        if (bytes(nftName).length < 0) revert NftFactory__EmptyNFTName();
-        if (bytes(nftSymbol).length < 0) revert NftFactory__EmptyNFTSymbol();
+        if (bytes(nftName).length == 0 || _isBlankSpace(nftName))
+            revert NftFactory__EmptyNFTName();
+        if (bytes(nftSymbol).length == 0 || _isBlankSpace(nftSymbol))
+            revert NftFactory__EmptyNFTSymbol();
 
         collectionCounter++;
 
@@ -52,5 +54,17 @@ contract NftFactory {
         address nftCollection
     ) public view returns (bool) {
         return isValidCollection[nftCollection];
+    }
+
+    function getCollectionCounter() public view returns (uint256) {
+        return collectionCounter;
+    }
+
+    function _isBlankSpace(string memory str) internal pure returns (bool) {
+        bytes memory b = bytes(str);
+        for (uint256 i = 0; i < b.length; i++) {
+            if (b[i] != 0x20) return false; // 0x20 = space character
+        }
+        return true;
     }
 }
