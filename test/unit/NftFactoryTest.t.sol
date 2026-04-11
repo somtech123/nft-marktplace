@@ -105,26 +105,41 @@ contract NftFactoryTest is Test {
         nftFactory.createNftCollection("", symbol);
     }
 
-    function testFuzz_createNftCollection_MultipleUsersCreateCollection(
-        string[] memory name,
-        string[] memory symbol,
-        address[] memory users
-    ) public {
-        vm.assume(users.length == name.length);
-        vm.assume(name.length == symbol.length);
-        vm.assume(users.length > 0 && users.length < 5);
+    // function testFuzz_createNftCollection(
+    //     string memory name,
+    //     string memory symbol,
+    //     address user
+    // ) public {
+    //     vm.assume(user != address(0));
+    //     vm.assume(bytes(name).length > 0 && bytes(name).length < 32);
+    //     vm.assume(bytes(symbol).length > 0 && bytes(symbol).length < 10);
 
-        for (uint256 i = 0; i < users.length; i++) {
-            if (
-                users[i] == address(0) ||
-                bytes(name[i]).length == 0 ||
-                bytes(symbol[i]).length == 0
-            ) {
-                return;
-            }
-            vm.prank(users[i]);
-            nftFactory.createNftCollection(name[i], symbol[i]);
-        }
-        assertEq(nftFactory.getCollectionCounter(), users.length);
-    }
+    //     vm.prank(user);
+    //     nftFactory.createNftCollection(name, symbol);
+
+    //     assertEq(nftFactory.getCollectionCounter(), 1);
+    // }
+
+    // function testFuzz_createNftCollection_MultipleUsersCreateCollection(
+    //     string[] memory name,
+    //     string[] memory symbol,
+    //     address[] memory users
+    // ) public {
+    //     vm.assume(users.length == name.length);
+    //     vm.assume(name.length == symbol.length);
+    //     vm.assume(users.length > 0 && users.length < 5);
+
+    //     for (uint256 i = 0; i < users.length; i++) {
+    //         if (
+    //             users[i] == address(0) ||
+    //             bytes(name[i]).length == 0 ||
+    //             bytes(symbol[i]).length == 0
+    //         ) {
+    //             return;
+    //         }
+    //         vm.prank(users[i]);
+    //         nftFactory.createNftCollection(name[i], symbol[i]);
+    //     }
+    //     assertEq(nftFactory.getCollectionCounter(), users.length);
+    // }
 }

@@ -1,0 +1,31 @@
+{
+  "name": "Wild Trio",
+  "description": "A unique NFT featuring a monkey, an ape, and a squirrel together in a vibrant scene.",
+  "imageCID": "ipfs://bafybeiavysix2djk5hsrgchn6nuqnzihdhdypkaset5spnwjbpy56tabou",
+  "attributes": [
+    {
+      "trait_type": "Animals",
+      "value": "Monkey, Ape, Squirrel"
+    },
+    {
+      "trait_type": "Monkey",
+      "value": "Present"
+    },
+    {
+      "trait_type": "Ape",
+      "value": "Present"
+    },
+    {
+      "trait_type": "Squirrel",
+      "value": "Present"
+    },
+    {
+      "trait_type": "Background",
+      "value": "Nature"
+    },
+    {
+      "trait_type": "Rarity",
+      "value": "Uncommon"
+    }
+  ]
+}

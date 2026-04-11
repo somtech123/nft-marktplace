@@ -16,7 +16,12 @@ contract NftFactory {
     event CollectionCreated(string name, string nftSymbol);
 
     uint256 private collectionCounter;
+    string public baseURI;
     mapping(address => bool) private isValidCollection;
+
+    constructor(string memory _baseURI) {
+        baseURI = _baseURI;
+    }
 
     /******************************************************************************
      *                             external functions                             *
@@ -35,8 +40,10 @@ contract NftFactory {
         collectionCounter++;
 
         NftCollection nft = new NftCollection(
+            baseURI,
             nftName,
             nftSymbol,
+            msg.sender,
             address(this)
         );
         isValidCollection[address(nft)] = true;

@@ -1,0 +1,31 @@
+{
+  "name": "Kingpin Ape",
+  "description": "A dominant ape boss wearing a crown and smoking, representing power, street authority, and underground influence.",
+  "imageCID": "ipfs://bafybeicijhrgrhutcuyx3sul66bmg2zclhkvxam5z3im6tz3ohipjcu32y",
+  "attributes": [
+    {
+      "trait_type": "Species",
+      "value": "Ape"
+    },
+    {
+      "trait_type": "Headwear",
+      "value": "Crown"
+    },
+    {
+      "trait_type": "Accessory",
+      "value": "Cigarette"
+    },
+    {
+      "trait_type": "Style",
+      "value": "Gangster"
+    },
+    {
+      "trait_type": "Mood",
+      "value": "Dominant"
+    },
+    {
+      "trait_type": "Rarity",
+      "value": "Legendary"
+    }
+  ]
+}

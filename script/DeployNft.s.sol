@@ -7,7 +7,8 @@ import {NftFactory} from "../src/NftFactory.sol";
 contract DeployNft is Script {
     function run() external returns (NftFactory) {
         vm.startBroadcast();
-        NftFactory nftFactory = new NftFactory();
+        string memory baseURI = "ipfs://";
+        NftFactory nftFactory = new NftFactory(baseURI);
 
         vm.stopBroadcast();
 
