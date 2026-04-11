@@ -76,4 +76,8 @@ contract NftCollection is ERC721, Ownable {
     function getNftSymbol() public view returns (string memory) {
         return i_nftSymbol;
     }
+
+    function getTokenIDCounter() public view returns (uint256) {
+        return _nextTokenId;
+    }
 }
