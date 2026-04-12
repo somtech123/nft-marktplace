@@ -1,7 +1,7 @@
 {
   "name": "Angry Ape",
   "description": "A very angry ape NFT.",
-  "imageCID": "ipfs://bafybeidds4y4nqcvshgsibvy3d3flgbr6efs5igahvwo7woebziyv6tx6y",
+  "image": "ipfs://bafybeidds4y4nqcvshgsibvy3d3flgbr6efs5igahvwo7woebziyv6tx6y",
   "attributes": [
     {
       "trait_type": "Level",

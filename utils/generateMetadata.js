@@ -1,8 +1,8 @@
 const fs = require("fs");
 const path = require("path");
 
-function createMetadata({ name, description, imageCID, attributes = [] }) {
-  return { name, description, imageCID, attributes };
+function createMetadata({ name, description, image, attributes = [] }) {
+  return { name, description, image, attributes };
 }
 
 function saveMetadata(metadata, filename) {
@@ -21,8 +21,7 @@ const nftItems = [
   {
     name: "Angry Ape",
     description: "A very angry ape NFT.",
-    imageCID:
-      "ipfs://bafybeidds4y4nqcvshgsibvy3d3flgbr6efs5igahvwo7woebziyv6tx6y",
+    image: "ipfs://bafybeidds4y4nqcvshgsibvy3d3flgbr6efs5igahvwo7woebziyv6tx6y",
     attributes: [
       { trait_type: "Level", value: 1 },
       { trait_type: "Mood", value: "Angry" },
@@ -33,8 +32,7 @@ const nftItems = [
     name: "Wild Trio",
     description:
       "A unique NFT featuring a monkey, an ape, and a squirrel together in a vibrant scene.",
-    imageCID:
-      "ipfs://bafybeiavysix2djk5hsrgchn6nuqnzihdhdypkaset5spnwjbpy56tabou",
+    image: "ipfs://bafybeiavysix2djk5hsrgchn6nuqnzihdhdypkaset5spnwjbpy56tabou",
     attributes: [
       {
         trait_type: "Animals",
@@ -66,8 +64,7 @@ const nftItems = [
     name: "Kingpin Ape",
     description:
       "A dominant ape boss wearing a crown and smoking, representing power, street authority, and underground influence.",
-    imageCID:
-      "ipfs://bafybeicijhrgrhutcuyx3sul66bmg2zclhkvxam5z3im6tz3ohipjcu32y",
+    image: "ipfs://bafybeicijhrgrhutcuyx3sul66bmg2zclhkvxam5z3im6tz3ohipjcu32y",
     attributes: [
       {
         trait_type: "Species",
@@ -99,8 +96,7 @@ const nftItems = [
     name: "Gentleman Ape",
     description:
       "A refined and gentle ape dressed in a stylish suit, embodying elegance, calmness, and sophistication.",
-    imageCID:
-      "ipfs://bafybeieajobdfq2tlktileuycdwegwaivcad3nhnn2pnafw5rugbvtwkey",
+    image: "ipfs://bafybeieajobdfq2tlktileuycdwegwaivcad3nhnn2pnafw5rugbvtwkey",
     attributes: [
       {
         trait_type: "Species",

@@ -1,7 +1,7 @@
 {
   "name": "Gentleman Ape",
   "description": "A refined and gentle ape dressed in a stylish suit, embodying elegance, calmness, and sophistication.",
-  "imageCID": "ipfs://bafybeieajobdfq2tlktileuycdwegwaivcad3nhnn2pnafw5rugbvtwkey",
+  "image": "ipfs://bafybeieajobdfq2tlktileuycdwegwaivcad3nhnn2pnafw5rugbvtwkey",
   "attributes": [
     {
       "trait_type": "Species",

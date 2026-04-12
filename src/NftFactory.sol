@@ -13,7 +13,11 @@ contract NftFactory {
     /******************************************************************************
      *                                   events                                   *
      ******************************************************************************/
-    event CollectionCreated(string name, string nftSymbol);
+    event CollectionCreated(
+        address indexed collectionAddr,
+        string name,
+        string nftSymbol
+    );
 
     uint256 private collectionCounter;
     string public baseURI;
@@ -48,7 +52,7 @@ contract NftFactory {
         );
         isValidCollection[address(nft)] = true;
 
-        emit CollectionCreated(nftName, nftSymbol);
+        emit CollectionCreated(address(nft), nftName, nftSymbol);
 
         return address(nft);
     }
@@ -75,3 +79,10 @@ contract NftFactory {
         return true;
     }
 }
+// cast send 0x0165878A594ca255338adfa4d48449f69242Eb8F "createNftCollection(string, string)" "cool collection" "cool" --private-key $LOCAL_PRIVATE_KEY --rpc-url $LOCAL_RPC_URL
+
+// cast send 0x0165878A594ca255338adfa4d48449f69242Eb8F "isNftValidCollection(address)" "0x3b02ff1e626ed7a8fd6ec5299e2c54e1421b626b" --private-key $LOCAL_PRIVATE_KEY --rpc-url $LOCAL_RPC_URL
+
+// cast send 0x3b02ff1e626ed7a8fd6ec5299e2c54e1421b626b "mintNft()"  --private-key $LOCAL_PRIVATE_KEY --rpc-url $LOCAL_RPC_URL
+
+//cast call 0x3b02ff1e626ed7a8fd6ec5299e2c54e1421b626b "tokenURI(uint256)" "0"  --private-key $LOCAL_PRIVATE_KEY --rpc-url $LOCAL_RPC_URL
