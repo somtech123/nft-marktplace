@@ -23,7 +23,7 @@ contract NftCollectionTest is Test {
         vm.deal(USER1, STARTING_BALANCE);
         DeployNft depoyNft = new DeployNft();
 
-        nftFactory = depoyNft.run();
+        (nftFactory, ) = depoyNft.run();
 
         vm.startPrank(CREATOR);
 
@@ -137,7 +137,7 @@ contract NftCollectionTest is Test {
 
     function test_tokenURI_ReturnTokenURI() public isCreator {
         string
-            memory expectedURI = "ipfs://bafybeiaj4ygfxndvmz5qie2g2xo7nlo74uj3fuun6doaoxeiiqb2rc34uq/0.json";
+            memory expectedURI = "ipfs://bafybeif4d4ajetwhmy4cn44j4hfliwgkx422qq5q56ljlzxbl53t67crmy/0.json";
         nftCollection.mintNft();
 
         string memory uri = nftCollection.tokenURI(0);

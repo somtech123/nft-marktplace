@@ -16,7 +16,7 @@ contract NftFactoryTest is Test {
     function setUp() external {
         DeployNft depoyNft = new DeployNft();
 
-        nftFactory = depoyNft.run();
+        (nftFactory, ) = depoyNft.run();
 
         vm.deal(CREATOR, STARTING_BALANCE);
     }
@@ -64,9 +64,17 @@ contract NftFactoryTest is Test {
     }
 
     function test_createNftCollection_EmitSuccessfully() public isCreator {
-        vm.expectEmit(false, false, false, true);
+        address expectedCollection = vm.computeCreateAddress(
+            address(nftFactory),
+            vm.getNonce(address(nftFactory))
+        );
+        vm.expectEmit(true, false, false, true);
 
-        emit NftFactory.CollectionCreated(NFT_NAME, NFT_SYMBOL);
+        emit NftFactory.CollectionCreated(
+            expectedCollection,
+            NFT_NAME,
+            NFT_SYMBOL
+        );
 
         nftFactory.createNftCollection(NFT_NAME, NFT_SYMBOL);
     }

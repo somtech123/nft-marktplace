@@ -22,6 +22,7 @@ contract NftFactory {
     uint256 private collectionCounter;
     string public baseURI;
     mapping(address => bool) private isValidCollection;
+    mapping(address => address[]) usersCollections;
 
     constructor(string memory _baseURI) {
         baseURI = _baseURI;
@@ -52,6 +53,8 @@ contract NftFactory {
         );
         isValidCollection[address(nft)] = true;
 
+        usersCollections[msg.sender].push(address(nft));
+
         emit CollectionCreated(address(nft), nftName, nftSymbol);
 
         return address(nft);
@@ -69,6 +72,9 @@ contract NftFactory {
 
     function getCollectionCounter() public view returns (uint256) {
         return collectionCounter;
+    }
+    function getUsersCollections() public view returns (address[] memory){
+        return usersCollections[msg.sender];
     }
 
     function _isBlankSpace(string memory str) internal pure returns (bool) {
