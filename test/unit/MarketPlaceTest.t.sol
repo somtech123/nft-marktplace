@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 import {Test} from "forge-std/Test.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import {ERC2981} from "@openzeppelin/contracts/token/common/ERC2981.sol";
 import {DeployNft} from "../../script/DeployNft.s.sol";
 import {DeployNft} from "../../script/DeployNft.s.sol";
 import {NftFactory} from "../../src/NftFactory.sol";
@@ -14,8 +15,8 @@ contract MarketPlaceTest is Test {
     MarketPlace marketPlace;
 
     uint256 constant STARTING_BALANCE = 10 ether;
-    uint constant INTIAL_TOKENID = 0;
-    uint constant NFT_PRICE = 1 ether;
+    uint256 constant INTIAL_TOKENID = 0;
+    uint256 constant NFT_PRICE = 1 ether;
     string constant NFT_NAME = "NEXT NFT";
     string constant NFT_SYMBOL = "NXT";
     string constant BASE_URI = "ipfs://";
@@ -25,7 +26,7 @@ contract MarketPlaceTest is Test {
 
     function setUp() external {
         vm.deal(CREATOR, STARTING_BALANCE);
-        vm.deal(USER1, STARTING_BALANCE);
+        vm.deal(USER1, STARTING_BALANCE + 1 ether);
 
         DeployNft depoyNft = new DeployNft();
 
@@ -60,7 +61,20 @@ contract MarketPlaceTest is Test {
             address(marketPlace),
             true
         );
+
         _;
+    }
+
+    modifier listNft() {
+        vm.startPrank(CREATOR);
+
+        IERC721(address(nftCollection)).setApprovalForAll(
+            address(marketPlace),
+            true
+        );
+        marketPlace.list_nft(address(nftCollection), INTIAL_TOKENID, NFT_PRICE);
+        _;
+        vm.stopPrank();
     }
 
     function test_listNFT_revertZeroNFTContractAddress() public isCreator {
@@ -138,5 +152,260 @@ contract MarketPlaceTest is Test {
         );
 
         marketPlace.list_nft(address(nftCollection), INTIAL_TOKENID, NFT_PRICE);
+    }
+
+    /******************************************************************************
+     *                              test update nft                               *
+     ******************************************************************************/
+
+    function test_updateListedNftPrice_RevertForInvalidListing()
+        public
+        isCreator
+    {
+        vm.expectRevert(MarketPlace.MarketPlace__ListingNotFound.selector);
+        marketPlace.updateListedNftPrice(address(nftCollection), 28, NFT_PRICE);
+    }
+
+    function test_updateListedNftPrice_RevertIfNotOwner() public listNft {
+        vm.startPrank(USER1);
+        vm.expectRevert(MarketPlace.MarketPlace__NotNFTOwner.selector);
+        marketPlace.updateListedNftPrice(
+            address(nftCollection),
+            INTIAL_TOKENID,
+            NFT_PRICE
+        );
+        vm.stopPrank();
+    }
+
+    function test_updateListedNftPrice_RevertForInvalidPrice() public listNft {
+        vm.expectRevert(MarketPlace.MarketPlace__InValidPrice.selector);
+        marketPlace.updateListedNftPrice(
+            address(nftCollection),
+            INTIAL_TOKENID,
+            0
+        );
+    }
+
+    function test_updateListedNftPrice_priceUpdatedSuccessfully()
+        public
+        listNft
+    {
+        MarketPlace.Listing memory _listing = marketPlace
+            .getListedTokenPriceFromTokenID(
+                address(nftCollection),
+                INTIAL_TOKENID
+            );
+        uint256 oldPrice = _listing.price;
+        uint256 newPrice = NFT_PRICE + 5 ether;
+
+        marketPlace.updateListedNftPrice(
+            address(nftCollection),
+            INTIAL_TOKENID,
+            newPrice
+        );
+
+        assertEq(oldPrice + 5 ether, newPrice);
+    }
+
+    function test_updateListedNftPrice_emitEventsSuccessfully() public listNft {
+        uint256 newPrice = NFT_PRICE + 5 ether;
+        vm.expectEmit(true, false, false, true);
+
+        emit MarketPlace.NFTPriceUpdated(
+            address(nftCollection),
+            INTIAL_TOKENID,
+            newPrice
+        );
+
+        marketPlace.updateListedNftPrice(
+            address(nftCollection),
+            INTIAL_TOKENID,
+            newPrice
+        );
+    }
+
+    /******************************************************************************
+     *                              test cancel nft                               *
+     ******************************************************************************/
+
+    function test_cancelListedNFT_RevertsIfListingNotFound() public listNft {
+        vm.expectRevert(MarketPlace.MarketPlace__ListingNotFound.selector);
+        marketPlace.cancelListedNFT(address(nftCollection), 2);
+    }
+
+    function test_cancelListedNFT_CancelSuccessfully() public listNft {
+        marketPlace.cancelListedNFT(address(nftCollection), INTIAL_TOKENID);
+
+        MarketPlace.Listing memory _listing = marketPlace
+            .getListedTokenPriceFromTokenID(
+                address(nftCollection),
+                INTIAL_TOKENID
+            );
+
+        assertTrue(_listing.seller == address(0));
+        assertEq(_listing.price, 0);
+    }
+
+    function test_cancelListedNFT_EmitEventSuccessfully() public listNft {
+        vm.expectEmit(true, true, false, true);
+        emit MarketPlace.CancelListedNFT(
+            CREATOR,
+            address(nftCollection),
+            INTIAL_TOKENID
+        );
+
+        marketPlace.cancelListedNFT(address(nftCollection), INTIAL_TOKENID);
+    }
+
+    /******************************************************************************
+     *                              test buy nft                               *
+     ******************************************************************************/
+
+    function test_buyNft_RevertsIfNFTNotFound() public listNft {
+        vm.startPrank(USER1);
+        vm.expectRevert(MarketPlace.MarketPlace__ListingNotFound.selector);
+        marketPlace.buyNFT{value: STARTING_BALANCE}(address(nftCollection), 1);
+
+        vm.stopPrank();
+    }
+
+    function test_buyNft_RevertsForInsufficientAmount() public listNft {
+        uint256 amount = 0.5 ether;
+        vm.startPrank(USER1);
+
+        vm.expectRevert(MarketPlace.MarketPlace__InsufficientPayment.selector);
+
+        marketPlace.buyNFT{value: amount}(
+            address(nftCollection),
+            INTIAL_TOKENID
+        );
+
+        vm.stopPrank();
+    }
+
+    function test_BuyNft_ListingisCleared() public listNft {
+        vm.startPrank(USER1);
+
+        marketPlace.buyNFT{value: NFT_PRICE}(
+            address(nftCollection),
+            INTIAL_TOKENID
+        );
+        MarketPlace.Listing memory _listing = marketPlace
+            .getListedTokenPriceFromTokenID(
+                address(nftCollection),
+                INTIAL_TOKENID
+            );
+
+        assertTrue(_listing.seller == address(0));
+        assertEq(_listing.price, 0);
+        vm.stopPrank();
+    }
+
+    function test_BuyNft_RoyaltyReceiverIsCreator() public listNft {
+        (address receiver, uint256 amount) = ERC2981(address(nftCollection))
+            .royaltyInfo(INTIAL_TOKENID, NFT_PRICE);
+
+        assertEq(receiver, CREATOR);
+        assertEq(amount, 0.05 ether);
+    }
+
+    function test_BuyNft_NFTTransfedToBuyer() public listNft {
+        assertEq(nftCollection.ownerOf(INTIAL_TOKENID), CREATOR);
+        vm.startPrank(USER1);
+
+        marketPlace.buyNFT{value: NFT_PRICE}(
+            address(nftCollection),
+            INTIAL_TOKENID
+        );
+        assertEq(nftCollection.ownerOf(INTIAL_TOKENID), USER1);
+        vm.stopPrank();
+    }
+
+    function test_BuyNft_EmitEventsSuccessfully() public listNft {
+        vm.startPrank(USER1);
+        vm.expectEmit(true, true, true, true);
+
+        emit MarketPlace.BoughtNFT(
+            address(nftCollection),
+            CREATOR,
+            USER1,
+            INTIAL_TOKENID,
+            NFT_PRICE
+        );
+
+        marketPlace.buyNFT{value: NFT_PRICE}(
+            address(nftCollection),
+            INTIAL_TOKENID
+        );
+        vm.stopPrank();
+    }
+
+    function test_withdrawProceed_revertsIfNotSeller() public listNft {
+        vm.startPrank(USER1);
+        marketPlace.buyNFT{value: NFT_PRICE}(
+            address(nftCollection),
+            INTIAL_TOKENID
+        );
+
+        vm.expectRevert(MarketPlace.MarketPlace__NoPendingWithdrawal.selector);
+        marketPlace.withdrawProceed();
+
+        vm.stopPrank();
+    }
+
+    function test_withdrawProceed_emitEventSucessfully() public listNft {
+        vm.startPrank(USER1);
+        marketPlace.buyNFT{value: NFT_PRICE}(
+            address(nftCollection),
+            INTIAL_TOKENID
+        );
+        vm.stopPrank();
+
+        vm.startPrank(CREATOR);
+        uint256 proceed = marketPlace.getProceed();
+
+        vm.expectEmit(true, false, false, true);
+
+        emit MarketPlace.ProceedWithdrawal(CREATOR, proceed);
+
+        marketPlace.withdrawProceed();
+
+        vm.stopPrank();
+    }
+
+    function test_withdrawProceed_revertsIfNotCreator() public listNft {
+        vm.startPrank(USER1);
+        marketPlace.buyNFT{value: NFT_PRICE}(
+            address(nftCollection),
+            INTIAL_TOKENID
+        );
+
+        vm.expectRevert(MarketPlace.MarketPlace__NoPendingWithdrawal.selector);
+        marketPlace.withdrawRoyalties();
+
+        vm.stopPrank();
+    }
+
+    function test_withdRoyalties_emitEventSucessfully() public listNft {
+        vm.startPrank(USER1);
+        marketPlace.buyNFT{value: NFT_PRICE}(
+            address(nftCollection),
+            INTIAL_TOKENID
+        );
+        vm.stopPrank();
+
+        vm.startPrank(CREATOR);
+        (, uint256 amount) = ERC2981(address(nftCollection)).royaltyInfo(
+            INTIAL_TOKENID,
+            NFT_PRICE
+        );
+
+        vm.expectEmit(true, false, false, true);
+
+        emit MarketPlace.RoyaltiesWithdrawal(CREATOR, amount);
+
+        marketPlace.withdrawRoyalties();
+
+        vm.stopPrank();
     }
 }

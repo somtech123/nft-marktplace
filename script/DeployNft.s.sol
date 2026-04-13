@@ -9,8 +9,7 @@ import {MarketPlace} from "../src/MarketPlace.sol";
 contract DeployNft is Script {
     function run() external returns (NftFactory, MarketPlace) {
         vm.startBroadcast();
-        string
-            memory baseURI = "ipfs://bafybeif4d4ajetwhmy4cn44j4hfliwgkx422qq5q56ljlzxbl53t67crmy/";
+        string memory baseURI = "ipfs://bafybeif4d4ajetwhmy4cn44j4hfliwgkx422qq5q56ljlzxbl53t67crmy/";
         NftFactory nftFactory = new NftFactory(baseURI);
         MarketPlace marketPlace = new MarketPlace();
 

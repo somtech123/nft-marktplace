@@ -16,7 +16,7 @@ contract NftFactoryTest is Test {
     function setUp() external {
         DeployNft depoyNft = new DeployNft();
 
-        (nftFactory, ) = depoyNft.run();
+        (nftFactory,) = depoyNft.run();
 
         vm.deal(CREATOR, STARTING_BALANCE);
     }
@@ -45,10 +45,7 @@ contract NftFactoryTest is Test {
         nftFactory.createNftCollection(NFT_NAME, "");
     }
 
-    function test_createNftCollection_RevertsWhiteSpaceSymbol()
-        public
-        isCreator
-    {
+    function test_createNftCollection_RevertsWhiteSpaceSymbol() public isCreator {
         vm.expectRevert(NftFactory.NftFactory__EmptyNFTSymbol.selector);
 
         nftFactory.createNftCollection(NFT_NAME, "  ");
@@ -64,34 +61,21 @@ contract NftFactoryTest is Test {
     }
 
     function test_createNftCollection_EmitSuccessfully() public isCreator {
-        address expectedCollection = vm.computeCreateAddress(
-            address(nftFactory),
-            vm.getNonce(address(nftFactory))
-        );
+        address expectedCollection = vm.computeCreateAddress(address(nftFactory), vm.getNonce(address(nftFactory)));
         vm.expectEmit(true, false, false, true);
 
-        emit NftFactory.CollectionCreated(
-            expectedCollection,
-            NFT_NAME,
-            NFT_SYMBOL
-        );
+        emit NftFactory.CollectionCreated(expectedCollection, NFT_NAME, NFT_SYMBOL);
 
         nftFactory.createNftCollection(NFT_NAME, NFT_SYMBOL);
     }
 
     function test_NftCollection_isValidCollection() public isCreator {
-        address collection = nftFactory.createNftCollection(
-            NFT_NAME,
-            NFT_SYMBOL
-        );
+        address collection = nftFactory.createNftCollection(NFT_NAME, NFT_SYMBOL);
 
         assertTrue(nftFactory.isNftValidCollection(collection));
     }
 
-    function test_createNftCollection_createMutilplellection()
-        public
-        isCreator
-    {
+    function test_createNftCollection_createMutilplellection() public isCreator {
         uint256 count = 5;
         for (uint256 i = 0; i < count; i++) {
             nftFactory.createNftCollection(NFT_NAME, NFT_SYMBOL);
@@ -103,10 +87,7 @@ contract NftFactoryTest is Test {
      *                                 fuzz test                                  *
      ******************************************************************************/
 
-    function testFuzz_createNftCollection_RevertsEmptyName(
-        string memory name,
-        string memory symbol
-    ) public isCreator {
+    function testFuzz_createNftCollection_RevertsEmptyName(string memory name, string memory symbol) public isCreator {
         vm.assume(bytes(name).length == 0);
         vm.expectRevert(NftFactory.NftFactory__EmptyNFTName.selector);
 

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: SEE LICENSE IN LICENSE
 pragma solidity ^0.8.24;
 import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import {ERC2981} from "@openzeppelin/contracts/token/common/ERC2981.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
@@ -8,7 +9,7 @@ import {NftFactory} from "./NftFactory.sol";
 
 using Strings for uint256;
 
-contract NftCollection is ERC721, Ownable {
+contract NftCollection is ERC721, ERC2981, Ownable {
     error NftCollection__ZeroAddressFactory();
     error NftCollection__EmptyNFTName();
     error NftCollection__EmptyNFTSymbol();
@@ -28,21 +29,26 @@ contract NftCollection is ERC721, Ownable {
         address _creator,
         address _factoryAddress
     ) ERC721(_nftName, _nftSymbol) Ownable(_creator) {
-        if (_factoryAddress == address(0))
+        if (_factoryAddress == address(0)) {
             revert NftCollection__ZeroAddressFactory();
+        }
         if (bytes(_nftName).length == 0) revert NftCollection__EmptyNFTName();
-        if (bytes(_nftSymbol).length == 0)
+        if (bytes(_nftSymbol).length == 0) {
             revert NftCollection__EmptyNFTSymbol();
+        }
         baseURI = _baseURI;
 
         i_nftName = _nftName;
         i_nftSymbol = _nftSymbol;
         factory_address = _factoryAddress;
+
+        _setDefaultRoyalty(_creator, 500); // 5%
     }
 
     modifier isValidCollection() {
-        if (!NftFactory(factory_address).isNftValidCollection(address(this)))
+        if (!NftFactory(factory_address).isNftValidCollection(address(this))) {
             revert NftCollection__InValidCollection();
+        }
         _;
     }
 
@@ -59,8 +65,9 @@ contract NftCollection is ERC721, Ownable {
     function tokenURI(
         uint256 tokenID
     ) public view override returns (string memory) {
-        if (_ownerOf(tokenID) == address(0))
+        if (_ownerOf(tokenID) == address(0)) {
             revert NftCollection__InValidTokenId();
+        }
 
         return string(abi.encodePacked(baseURI, tokenID.toString(), ".json"));
     }
@@ -79,5 +86,11 @@ contract NftCollection is ERC721, Ownable {
 
     function getTokenIDCounter() public view returns (uint256) {
         return _nextTokenId;
+    }
+
+    function supportsInterface(
+        bytes4 interfaceId
+    ) public view override(ERC721, ERC2981) returns (bool) {
+        return super.supportsInterface(interfaceId);
     }
 }

@@ -13,11 +13,7 @@ contract NftFactory {
     /******************************************************************************
      *                                   events                                   *
      ******************************************************************************/
-    event CollectionCreated(
-        address indexed collectionAddr,
-        string name,
-        string nftSymbol
-    );
+    event CollectionCreated(address indexed collectionAddr, string name, string nftSymbol);
 
     uint256 private collectionCounter;
     string public baseURI;
@@ -32,25 +28,18 @@ contract NftFactory {
      *                             external functions                             *
      ******************************************************************************/
 
-    function createNftCollection(
-        string memory nftName,
-        string memory nftSymbol
-    ) external returns (address) {
+    function createNftCollection(string memory nftName, string memory nftSymbol) external returns (address) {
         if (msg.sender == address(0)) revert NftFactory__ZeroAddressCreator();
-        if (bytes(nftName).length == 0 || _isBlankSpace(nftName))
+        if (bytes(nftName).length == 0 || _isBlankSpace(nftName)) {
             revert NftFactory__EmptyNFTName();
-        if (bytes(nftSymbol).length == 0 || _isBlankSpace(nftSymbol))
+        }
+        if (bytes(nftSymbol).length == 0 || _isBlankSpace(nftSymbol)) {
             revert NftFactory__EmptyNFTSymbol();
+        }
 
         collectionCounter++;
 
-        NftCollection nft = new NftCollection(
-            baseURI,
-            nftName,
-            nftSymbol,
-            msg.sender,
-            address(this)
-        );
+        NftCollection nft = new NftCollection(baseURI, nftName, nftSymbol, msg.sender, address(this));
         isValidCollection[address(nft)] = true;
 
         usersCollections[msg.sender].push(address(nft));
@@ -64,16 +53,15 @@ contract NftFactory {
      *                               view functions                               *
      ******************************************************************************/
 
-    function isNftValidCollection(
-        address nftCollection
-    ) public view returns (bool) {
+    function isNftValidCollection(address nftCollection) public view returns (bool) {
         return isValidCollection[nftCollection];
     }
 
     function getCollectionCounter() public view returns (uint256) {
         return collectionCounter;
     }
-    function getUsersCollections() public view returns (address[] memory){
+
+    function getUsersCollections() public view returns (address[] memory) {
         return usersCollections[msg.sender];
     }
 

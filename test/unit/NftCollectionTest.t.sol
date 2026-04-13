@@ -23,7 +23,7 @@ contract NftCollectionTest is Test {
         vm.deal(USER1, STARTING_BALANCE);
         DeployNft depoyNft = new DeployNft();
 
-        (nftFactory, ) = depoyNft.run();
+        (nftFactory,) = depoyNft.run();
 
         vm.startPrank(CREATOR);
 
@@ -50,28 +50,20 @@ contract NftCollectionTest is Test {
         string memory expectedName = nftCollection.name();
         string memory name = nftCollection.getNftName();
 
-        assert(
-            keccak256(abi.encodePacked(expectedName)) ==
-                keccak256(abi.encodePacked(name))
-        );
+        assert(keccak256(abi.encodePacked(expectedName)) == keccak256(abi.encodePacked(name)));
     }
 
     function test_NftCollection_SymbolIsCorect() public view {
         string memory expectedSymbol = nftCollection.symbol();
         string memory symbol = nftCollection.getNftSymbol();
 
-        assert(
-            keccak256(abi.encodePacked(expectedSymbol)) ==
-                keccak256(abi.encodePacked(symbol))
-        );
+        assert(keccak256(abi.encodePacked(expectedSymbol)) == keccak256(abi.encodePacked(symbol)));
     }
 
     function test_NftCollection_RevertsAddressZeroFactory() public {
         address fakeFactory = address(0);
 
-        vm.expectRevert(
-            NftCollection.NftCollection__ZeroAddressFactory.selector
-        );
+        vm.expectRevert(NftCollection.NftCollection__ZeroAddressFactory.selector);
 
         new NftCollection(BASE_URI, NFT_NAME, NFT_SYMBOL, CREATOR, fakeFactory);
     }
@@ -79,13 +71,7 @@ contract NftCollectionTest is Test {
     function test_NftCollection_RevertsEmptyNftName() public {
         vm.expectRevert(NftCollection.NftCollection__EmptyNFTName.selector);
 
-        new NftCollection(
-            BASE_URI,
-            "",
-            NFT_SYMBOL,
-            CREATOR,
-            address(nftFactory)
-        );
+        new NftCollection(BASE_URI, "", NFT_SYMBOL, CREATOR, address(nftFactory));
     }
 
     function test_NftCollection_RevertsNftSymbol() public {
@@ -106,17 +92,10 @@ contract NftCollectionTest is Test {
     function test_mintNft_RevertsIfNotFromFactory() public isCreator {
         MockInvalidFactory rogueFactory = new MockInvalidFactory();
 
-        NftCollection rogueCollection = new NftCollection(
-            BASE_URI,
-            NFT_NAME,
-            NFT_SYMBOL,
-            CREATOR,
-            address(rogueFactory)
-        );
+        NftCollection rogueCollection =
+            new NftCollection(BASE_URI, NFT_NAME, NFT_SYMBOL, CREATOR, address(rogueFactory));
 
-        vm.expectRevert(
-            NftCollection.NftCollection__InValidCollection.selector
-        );
+        vm.expectRevert(NftCollection.NftCollection__InValidCollection.selector);
 
         rogueCollection.mintNft();
     }
@@ -136,16 +115,12 @@ contract NftCollectionTest is Test {
     }
 
     function test_tokenURI_ReturnTokenURI() public isCreator {
-        string
-            memory expectedURI = "ipfs://bafybeif4d4ajetwhmy4cn44j4hfliwgkx422qq5q56ljlzxbl53t67crmy/0.json";
+        string memory expectedURI = "ipfs://bafybeif4d4ajetwhmy4cn44j4hfliwgkx422qq5q56ljlzxbl53t67crmy/0.json";
         nftCollection.mintNft();
 
         string memory uri = nftCollection.tokenURI(0);
 
         // assertEq(uri, expectedURI);
-        assert(
-            keccak256(abi.encodePacked(expectedURI)) ==
-                keccak256(abi.encodePacked(uri))
-        );
+        assert(keccak256(abi.encodePacked(expectedURI)) == keccak256(abi.encodePacked(uri)));
     }
 }
