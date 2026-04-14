@@ -8,29 +8,39 @@ import {DeployNft} from "../../script/DeployNft.s.sol";
 import {NftFactory} from "../../src/NftFactory.sol";
 import {NftCollection} from "../../src/NftCollection.sol";
 import {MarketPlace} from "../../src/MarketPlace.sol";
+import {MockMarketPlace} from "../mocks/MockMarketPlace.sol";
 
 contract MarketPlaceTest is Test {
     NftFactory nftFactory;
     NftCollection nftCollection;
     MarketPlace marketPlace;
+    MockMarketPlace mockMarketPlace;
 
     uint256 constant STARTING_BALANCE = 10 ether;
     uint256 constant INTIAL_TOKENID = 0;
-    uint256 constant NFT_PRICE = 1 ether;
+    uint256 constant NFT_PRICE = 2 ether;
+    uint256 constant LISTED_PRICE = 1 ether;
     string constant NFT_NAME = "NEXT NFT";
     string constant NFT_SYMBOL = "NXT";
     string constant BASE_URI = "ipfs://";
+    uint256 constant FIXED_SALES_DURATION = 0;
+    uint256 constant AUCTION_SALES_DURATION = 7;
 
     address CREATOR = makeAddr("CREATOR");
     address USER1 = makeAddr("USER1");
+    address USER2 = makeAddr("USER2");
+    address USER3 = makeAddr("USER3");
 
     function setUp() external {
         vm.deal(CREATOR, STARTING_BALANCE);
         vm.deal(USER1, STARTING_BALANCE + 1 ether);
+        vm.deal(USER2, STARTING_BALANCE + 1 ether);
+        vm.deal(USER3, STARTING_BALANCE + 1 ether);
 
         DeployNft depoyNft = new DeployNft();
 
         (nftFactory, marketPlace) = depoyNft.run();
+        mockMarketPlace = new MockMarketPlace();
 
         vm.startPrank(CREATOR);
 
@@ -72,7 +82,28 @@ contract MarketPlaceTest is Test {
             address(marketPlace),
             true
         );
-        marketPlace.list_nft(address(nftCollection), INTIAL_TOKENID, NFT_PRICE);
+        marketPlace.list_nft(
+            address(nftCollection),
+            INTIAL_TOKENID,
+            NFT_PRICE,
+            FIXED_SALES_DURATION
+        );
+        _;
+        vm.stopPrank();
+    }
+    modifier listAuctionNft() {
+        vm.startPrank(CREATOR);
+
+        IERC721(address(nftCollection)).setApprovalForAll(
+            address(marketPlace),
+            true
+        );
+        marketPlace.list_nft(
+            address(nftCollection),
+            INTIAL_TOKENID,
+            LISTED_PRICE,
+            AUCTION_SALES_DURATION
+        );
         _;
         vm.stopPrank();
     }
@@ -81,12 +112,22 @@ contract MarketPlaceTest is Test {
         vm.expectRevert(
             MarketPlace.MarketPlace__ZeroAddressNFTContract.selector
         );
-        marketPlace.list_nft(address(0), INTIAL_TOKENID, NFT_PRICE);
+        marketPlace.list_nft(
+            address(0),
+            INTIAL_TOKENID,
+            NFT_PRICE,
+            FIXED_SALES_DURATION
+        );
     }
 
     function test_listNFT_revertPriceisInvalid() public isCreator {
         vm.expectRevert(MarketPlace.MarketPlace__InValidPrice.selector);
-        marketPlace.list_nft(address(nftCollection), INTIAL_TOKENID, 0);
+        marketPlace.list_nft(
+            address(nftCollection),
+            INTIAL_TOKENID,
+            0,
+            FIXED_SALES_DURATION
+        );
     }
 
     function test_listNFT_revertIfNotOwner() public {
@@ -94,13 +135,23 @@ contract MarketPlaceTest is Test {
 
         vm.expectRevert(MarketPlace.MarketPlace__NotNFTOwner.selector);
 
-        marketPlace.list_nft(address(nftCollection), INTIAL_TOKENID, NFT_PRICE);
+        marketPlace.list_nft(
+            address(nftCollection),
+            INTIAL_TOKENID,
+            NFT_PRICE,
+            FIXED_SALES_DURATION
+        );
         vm.stopPrank();
     }
 
     function test_listNFT_revertifNoApproval() public isCreator {
         vm.expectRevert(MarketPlace.MarketPlace__NFTNotApproved.selector);
-        marketPlace.list_nft(address(nftCollection), INTIAL_TOKENID, NFT_PRICE);
+        marketPlace.list_nft(
+            address(nftCollection),
+            INTIAL_TOKENID,
+            NFT_PRICE,
+            FIXED_SALES_DURATION
+        );
     }
 
     function test_listNFT_setLstingProperlyWithApproveAll()
@@ -108,16 +159,25 @@ contract MarketPlaceTest is Test {
         isCreator
         approveAllNFT
     {
-        marketPlace.list_nft(address(nftCollection), INTIAL_TOKENID, NFT_PRICE);
+        marketPlace.list_nft(
+            address(nftCollection),
+            INTIAL_TOKENID,
+            NFT_PRICE,
+            AUCTION_SALES_DURATION
+        );
 
         MarketPlace.Listing memory _listing = marketPlace
             .getListedTokenPriceFromTokenID(
                 address(nftCollection),
                 INTIAL_TOKENID
             );
+        uint256 deadline = block.timestamp + (AUCTION_SALES_DURATION * 1 days);
+        vm.warp(deadline);
 
         assertTrue(_listing.seller == CREATOR);
         assertEq(_listing.price, NFT_PRICE);
+        assertTrue(_listing.saleType == MarketPlace.SaleType.AUCTION);
+        assertEq(_listing.endTime, deadline);
     }
 
     function test_listNFT_setLstingProperlyWithApprove()
@@ -125,7 +185,12 @@ contract MarketPlaceTest is Test {
         isCreator
         aproveSingleNFT(INTIAL_TOKENID)
     {
-        marketPlace.list_nft(address(nftCollection), INTIAL_TOKENID, NFT_PRICE);
+        marketPlace.list_nft(
+            address(nftCollection),
+            INTIAL_TOKENID,
+            NFT_PRICE,
+            FIXED_SALES_DURATION
+        );
 
         MarketPlace.Listing memory _listing = marketPlace
             .getListedTokenPriceFromTokenID(
@@ -135,6 +200,8 @@ contract MarketPlaceTest is Test {
 
         assertTrue(_listing.seller == CREATOR);
         assertEq(_listing.price, NFT_PRICE);
+        assertTrue(_listing.saleType == MarketPlace.SaleType.FIXED);
+        assertEq(_listing.endTime, 0);
     }
 
     function test_listNFT_EventEmitSuccessfully()
@@ -151,7 +218,12 @@ contract MarketPlaceTest is Test {
             NFT_PRICE
         );
 
-        marketPlace.list_nft(address(nftCollection), INTIAL_TOKENID, NFT_PRICE);
+        marketPlace.list_nft(
+            address(nftCollection),
+            INTIAL_TOKENID,
+            NFT_PRICE,
+            FIXED_SALES_DURATION
+        );
     }
 
     /******************************************************************************
@@ -260,6 +332,17 @@ contract MarketPlaceTest is Test {
     /******************************************************************************
      *                              test buy nft                               *
      ******************************************************************************/
+    function test_buyNft_RevertsIfAuction() public listAuctionNft {
+        vm.startPrank(USER1);
+
+        vm.expectRevert(MarketPlace.MarketPlace__NotFixedNFT.selector);
+        marketPlace.buyNFT{value: NFT_PRICE}(
+            address(nftCollection),
+            INTIAL_TOKENID
+        );
+
+        vm.stopPrank();
+    }
 
     function test_buyNft_RevertsIfNFTNotFound() public listNft {
         vm.startPrank(USER1);
@@ -407,5 +490,87 @@ contract MarketPlaceTest is Test {
         marketPlace.withdrawRoyalties();
 
         vm.stopPrank();
+    }
+
+    function test_bidNft_RevertsIfAlreadySold() public listAuctionNft {
+        vm.startPrank(USER1);
+        mockMarketPlace.forceSold(address(nftCollection), INTIAL_TOKENID);
+
+        vm.expectRevert(MarketPlace.MarketPlace__AlreadySold.selector);
+
+        mockMarketPlace.bidNft{value: NFT_PRICE}(
+            address(nftCollection),
+            INTIAL_TOKENID
+        );
+
+        vm.stopPrank();
+    }
+
+    function test_bidNft_RevertsIfFixedSalesType() public listNft {
+        vm.startPrank(USER1);
+        vm.expectRevert(MarketPlace.MarketPlace__NotAuctionNFT.selector);
+        marketPlace.bidNft{value: NFT_PRICE}(
+            address(nftCollection),
+            INTIAL_TOKENID
+        );
+
+        vm.stopPrank();
+    }
+
+    function test_bidNft_RevertsIfTimePassed() public listAuctionNft {
+        vm.startPrank(USER1);
+
+        skip((AUCTION_SALES_DURATION * 1 days) + 1);
+
+        vm.expectRevert(MarketPlace.MarketPlace__AuctionAlreadyEnded.selector);
+        marketPlace.bidNft{value: NFT_PRICE}(
+            address(nftCollection),
+            INTIAL_TOKENID
+        );
+
+        vm.stopPrank();
+    }
+
+    function test_bidNft_RevertsIfBidisLow() public listAuctionNft {
+        vm.startPrank(USER1);
+
+        vm.expectRevert(MarketPlace.MarketPlace__BidTooLow.selector);
+        marketPlace.bidNft{value: LISTED_PRICE}(
+            address(nftCollection),
+            INTIAL_TOKENID
+        );
+
+        vm.stopPrank();
+    }
+
+    function test_bidNft_higgestBidder() public listAuctionNft {
+        vm.startPrank(USER1);
+        marketPlace.bidNft{value: NFT_PRICE}(
+            address(nftCollection),
+            INTIAL_TOKENID
+        );
+        vm.stopPrank();
+
+        vm.startPrank(USER2);
+        marketPlace.bidNft{value: 8 ether}(
+            address(nftCollection),
+            INTIAL_TOKENID
+        );
+        vm.stopPrank();
+
+        vm.startPrank(USER3);
+        marketPlace.bidNft{value: 10 ether}(
+            address(nftCollection),
+            INTIAL_TOKENID
+        );
+        vm.stopPrank();
+
+        MarketPlace.Listing memory _listing = marketPlace
+            .getListedTokenPriceFromTokenID(
+                address(nftCollection),
+                INTIAL_TOKENID
+            );
+        assertTrue(_listing.highestBidder == USER3);
+        assertEq(_listing.highestBid, 10 ether);
     }
 }

@@ -5,6 +5,21 @@ import {ERC2981} from "@openzeppelin/contracts/token/common/ERC2981.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 contract MarketPlace is ReentrancyGuard {
+    enum SaleType {
+        FIXED,
+        AUCTION
+    }
+
+    struct Listing {
+        address seller;
+        uint256 price;
+        SaleType saleType;
+        uint256 endTime;
+        uint256 highestBid;
+        address highestBidder;
+        bool sold;
+    }
+
     error MarketPlace__ZeroAddressNFTContract();
     error MarketPlace__NotNFTOwner();
     error MarketPlace__NFTNotApproved();
@@ -15,6 +30,11 @@ contract MarketPlace is ReentrancyGuard {
     error MarketPlace__ListingNotFound();
     error MarketPlace__NoPendingWithdrawal();
     error MarketPlace__TransferFailed();
+    error MarketPlace__NotFixedNFT();
+    error MarketPlace__NotAuctionNFT();
+    error MarketPlace__AlreadySold();
+    error MarketPlace__AuctionAlreadyEnded();
+    error MarketPlace__BidTooLow();
 
     event NFTListed(
         address indexed seller,
@@ -44,12 +64,15 @@ contract MarketPlace is ReentrancyGuard {
     event ProceedWithdrawal(address indexed seller, uint256 price);
     event RoyaltiesWithdrawal(address indexed seller, uint256 price);
 
-    struct Listing {
-        address seller;
-        uint256 price;
-    }
+    event BidPlaced(
+        address indexed bidder,
+        address indexed nftContractAddress,
+        uint256 tokenID,
+        uint price
+    );
 
     mapping(address => mapping(uint256 => Listing)) listing;
+    mapping(address => uint256) pendingBidReturns;
     uint256 public marketPlaceFee = 250; //basic point 2.5%
 
     mapping(address => uint256) royaltiesPendingWithdrawal;
@@ -78,8 +101,12 @@ contract MarketPlace is ReentrancyGuard {
     function list_nft(
         address nftContractAddress,
         uint256 tokenID,
-        uint256 priceInWei
+        uint256 priceInWei,
+        // SaleType _saleType,
+        uint256 _duration
     ) external {
+        uint256 releaseTime;
+
         if (nftContractAddress == address(0)) {
             revert MarketPlace__ZeroAddressNFTContract();
         }
@@ -88,6 +115,9 @@ contract MarketPlace is ReentrancyGuard {
 
         if (IERC721(nftContractAddress).ownerOf(tokenID) != msg.sender) {
             revert MarketPlace__NotNFTOwner();
+        }
+        if (_duration != 0) {
+            releaseTime = _duration * 1 days;
         }
 
         // if (IERC721(nftContractAddress).ownerOf(tokenID) == address(0))
@@ -100,7 +130,12 @@ contract MarketPlace is ReentrancyGuard {
 
         listing[nftContractAddress][tokenID] = Listing({
             seller: msg.sender,
-            price: priceInWei
+            price: priceInWei,
+            saleType: _duration == 0 ? SaleType.FIXED : SaleType.AUCTION,
+            endTime: _duration == 0 ? 0 : block.timestamp + releaseTime,
+            highestBid: 0,
+            highestBidder: address(0),
+            sold: false
         });
 
         emit NFTListed(msg.sender, nftContractAddress, tokenID, priceInWei);
@@ -112,6 +147,7 @@ contract MarketPlace is ReentrancyGuard {
         uint256 newPriceInWei
     ) external {
         Listing memory _listing = listing[nftContractAddress][tokenID];
+        if (_listing.sold == true) revert MarketPlace__AlreadySold();
         if (_listing.seller == address(0))
             revert MarketPlace__ListingNotFound();
 
@@ -128,6 +164,7 @@ contract MarketPlace is ReentrancyGuard {
         uint256 tokenID
     ) external {
         Listing memory _listing = listing[nftContractAddress][tokenID];
+        if (_listing.sold == true) revert MarketPlace__AlreadySold();
         if (_listing.seller == address(0))
             revert MarketPlace__ListingNotFound();
 
@@ -143,6 +180,10 @@ contract MarketPlace is ReentrancyGuard {
         uint256 tokenID
     ) external payable nonReentrant {
         Listing memory _listing = listing[nftContractAddress][tokenID];
+        if (_listing.sold == true) revert MarketPlace__AlreadySold();
+        if (_listing.saleType == SaleType.AUCTION)
+            revert MarketPlace__NotFixedNFT();
+
         if (_listing.seller == address(0))
             revert MarketPlace__ListingNotFound();
 
@@ -150,6 +191,7 @@ contract MarketPlace is ReentrancyGuard {
             revert MarketPlace__InsufficientPayment();
 
         uint256 salesPrice = _listing.price;
+        _listing.sold = true;
 
         delete listing[nftContractAddress][tokenID];
 
@@ -204,6 +246,30 @@ contract MarketPlace is ReentrancyGuard {
 
         (bool success, ) = payable(msg.sender).call{value: amount}("");
         if (!success) revert MarketPlace__TransferFailed();
+    }
+
+    function bidNft(
+        address nftContractAddress,
+        uint256 tokenID
+    ) external payable nonReentrant {
+        Listing memory _listing = listing[nftContractAddress][tokenID];
+
+        if (_listing.sold == true) revert MarketPlace__AlreadySold();
+        if (_listing.saleType == SaleType.FIXED)
+            revert MarketPlace__NotAuctionNFT();
+        if (block.timestamp > _listing.endTime)
+            revert MarketPlace__AuctionAlreadyEnded();
+        if (msg.value <= _listing.highestBid + _listing.price)
+            revert MarketPlace__BidTooLow();
+
+        if (_listing.highestBidder != address(0)) {
+            pendingBidReturns[_listing.highestBidder] += _listing.highestBid;
+        }
+
+        listing[nftContractAddress][tokenID].highestBidder = msg.sender;
+        listing[nftContractAddress][tokenID].highestBid = msg.value;
+
+        emit BidPlaced(msg.sender, nftContractAddress, tokenID, msg.value);
     }
 
     function getProceed() external view returns (uint256) {
