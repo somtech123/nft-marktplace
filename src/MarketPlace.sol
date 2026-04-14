@@ -35,6 +35,10 @@ contract MarketPlace is ReentrancyGuard {
     error MarketPlace__AlreadySold();
     error MarketPlace__AuctionAlreadyEnded();
     error MarketPlace__BidTooLow();
+    error MarketPlace__AuctionNotClosed();
+    error MarketPlace__ZeroAddress();
+    error MarketPlace__NoBids();
+    error MarketPlace__NotHighestBidder();
 
     event NFTListed(
         address indexed seller,
@@ -74,6 +78,7 @@ contract MarketPlace is ReentrancyGuard {
     mapping(address => mapping(uint256 => Listing)) listing;
     mapping(address => uint256) pendingBidReturns;
     uint256 public marketPlaceFee = 250; //basic point 2.5%
+    uint256 totalMarketFees;
 
     mapping(address => uint256) royaltiesPendingWithdrawal;
     mapping(address => uint256) sellersPendingWithdrawal;
@@ -191,9 +196,6 @@ contract MarketPlace is ReentrancyGuard {
             revert MarketPlace__InsufficientPayment();
 
         uint256 salesPrice = _listing.price;
-        _listing.sold = true;
-
-        delete listing[nftContractAddress][tokenID];
 
         //calculate royalties
         (address receiver, uint256 royaltyAmount) = ERC2981(nftContractAddress)
@@ -205,6 +207,9 @@ contract MarketPlace is ReentrancyGuard {
 
         royaltiesPendingWithdrawal[receiver] += royaltyAmount;
         sellersPendingWithdrawal[_listing.seller] += sellerAmount;
+        totalMarketFees += fee;
+
+        delete listing[nftContractAddress][tokenID];
 
         IERC721(nftContractAddress).safeTransferFrom(
             _listing.seller,
@@ -219,11 +224,6 @@ contract MarketPlace is ReentrancyGuard {
             tokenID,
             msg.value
         );
-
-        if (fee > 0) {
-            (bool _success, ) = payable(address(this)).call{value: fee}("");
-            require(_success, "Fee Transfer Failed");
-        }
     }
 
     function withdrawProceed() external nonReentrant {
@@ -253,7 +253,7 @@ contract MarketPlace is ReentrancyGuard {
         uint256 tokenID
     ) external payable nonReentrant {
         Listing memory _listing = listing[nftContractAddress][tokenID];
-
+        if (msg.sender == address(0)) revert MarketPlace__ZeroAddress();
         if (_listing.sold == true) revert MarketPlace__AlreadySold();
         if (_listing.saleType == SaleType.FIXED)
             revert MarketPlace__NotAuctionNFT();
@@ -270,6 +270,50 @@ contract MarketPlace is ReentrancyGuard {
         listing[nftContractAddress][tokenID].highestBid = msg.value;
 
         emit BidPlaced(msg.sender, nftContractAddress, tokenID, msg.value);
+    }
+
+    function finalizedBid(
+        address nftContractAddress,
+        uint256 tokenID
+    ) external nonReentrant {
+        Listing memory _listing = listing[nftContractAddress][tokenID];
+        if (msg.sender != _listing.highestBidder)
+            revert MarketPlace__NotHighestBidder();
+        if (_listing.seller == address(0))
+            revert MarketPlace__ListingNotFound();
+        if (_listing.sold == true) revert MarketPlace__AlreadySold();
+        if (_listing.saleType == SaleType.FIXED)
+            revert MarketPlace__NotAuctionNFT();
+        if (block.timestamp < _listing.endTime)
+            revert MarketPlace__AuctionNotClosed();
+        if (_listing.highestBidder == address(0)) revert MarketPlace__NoBids();
+        uint256 salesPrice = _listing.highestBid;
+
+        (address receiver, uint256 royaltyAmount) = ERC2981(nftContractAddress)
+            .royaltyInfo(tokenID, salesPrice);
+
+        uint256 fee = (salesPrice * marketPlaceFee) / 10000;
+        uint256 sellerAmount = salesPrice - royaltyAmount - fee;
+
+        royaltiesPendingWithdrawal[receiver] += royaltyAmount;
+        sellersPendingWithdrawal[_listing.seller] += sellerAmount;
+        totalMarketFees += fee;
+
+        IERC721(nftContractAddress).safeTransferFrom(
+            _listing.seller,
+            _listing.highestBidder,
+            tokenID
+        );
+
+        delete listing[nftContractAddress][tokenID];
+
+        emit BoughtNFT(
+            nftContractAddress,
+            _listing.seller,
+            _listing.highestBidder,
+            tokenID,
+            salesPrice
+        );
     }
 
     function getProceed() external view returns (uint256) {
